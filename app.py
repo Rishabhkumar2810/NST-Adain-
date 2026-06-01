@@ -30,7 +30,8 @@ class UploadForm(FlaskForm):
     alpha = FloatField('Alpha', default=1.0)
     submit = SubmitField('Transfer Style')
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
+torch.set_num_threads(1)
 
 encoder = VGGEncoder('vgg_normalised.pth').to(device)
 decoder = Decoder().to(device)
@@ -46,12 +47,12 @@ def allowed_file(filename):
 
 def style_transfer(content_image, style_image, encoder, decoder, alpha, device):
     content_transform = transforms.Compose([
-        transforms.Resize(256),
+        transforms.Resize((256,256)),
         transforms.ToTensor()
     ])
 
     style_transform = transforms.Compose([
-        transforms.Resize(256),
+        transforms.Resize((256,256)),
         transforms.ToTensor()
     ])
     content_image = content_transform(content_image).unsqueeze(0).to(device)
@@ -111,6 +112,10 @@ def index():
                 content_image = Image.open(content_path).convert('RGB')
                 style_image = Image.open(style_path).convert('RGB')
 
+                # Reduce memory usage
+                content_image.thumbnail((256, 256))
+                style_image.thumbnail((256, 256))
+
                 alpha = float(form.alpha.data)
                 stylized_image = style_transfer(content_image, style_image, encoder, decoder, alpha, device)
 
@@ -120,6 +125,7 @@ def index():
                 
                 result_image = result_filename
             except Exception as e:
+                print("ERROR:", e)
                 error = str(e)
     else:
         if not content_filename:
